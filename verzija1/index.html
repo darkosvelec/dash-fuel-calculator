@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kalkulator potrošnje goriva</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 500px;
+      margin: auto;
+      background-color: #f8f9fa;
+    }
+    input, button {
+      padding: 14px;
+      margin: 12px 0;
+      width: 100%;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+      font-size: 18px;
+    }
+    ul {
+      padding-left: 20px;
+    }
+    li {
+      background: #e9ecef;
+      padding: 8px;
+      margin: 4px 0;
+      border-radius: 6px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Kalkulator potrošnje goriva (l/100 km)</h2>
+  <label>Pređeni kilometri od zadnjeg punjenja spremnika (A):</label>
+  <input type="number" id="passedKm" placeholder="npr. 320">
+
+  <label>Preostali kilometri (B):</label>
+  <input type="number" id="remainingKm" placeholder="npr. 280">
+
+  <label>Kapacitet spremnika (litara):</label>
+  <input type="number" id="tankCapacity" placeholder="npr. 50">
+
+  <button onclick="calculateConsumption()">Izračunaj potrošnju</button>
+  <div class="result" id="result"></div>
+
+  <h3>Spremljeni rezultati</h3>
+  <ul id="savedResults"></ul>
+
+  <script>
+    function calculateConsumption() {
+      const passedKm = parseFloat(document.getElementById('passedKm').value);
+      const remainingKm = parseFloat(document.getElementById('remainingKm').value);
+      const tankCapacity = parseFloat(document.getElementById('tankCapacity').value);
+
+      if (isNaN(passedKm) || isNaN(remainingKm) || isNaN(tankCapacity) || (passedKm + remainingKm) === 0) {
+        document.getElementById('result').innerText = "Molimo unesite sve vrijednosti ispravno.";
+        return;
+      }
+
+      const totalKm = passedKm + remainingKm;
+      const consumption = (tankCapacity * 100 / totalKm).toFixed(2);
+      const resultText = `Procijenjena potrošnja: ${consumption} l/100 km`;
+
+      document.getElementById('result').innerText = resultText;
+
+      const li = document.createElement('li');
+      li.textContent = `${new Date().toLocaleString()}: ${resultText}`;
+      document.getElementById('savedResults').appendChild(li);
+    }
+  </script>
+</body>
+</html>
