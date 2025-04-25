@@ -4,226 +4,193 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Kalkulator potrošnje goriva</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
-      margin: 20px;
-    }
-    label, input, select, button {
-      display: block;
-      margin-bottom: 10px;
-    }
-    canvas {
-      max-width: 100%;
-      height: auto;
-    }
-    #modalPotvrda {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(0,0,0,0.5);
-      align-items: center;
+      background-color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+      display: flex;
       justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      min-height: 100vh;
     }
-    #modalPotvrda .sadrzaj {
-      background: white;
-      padding: 20px;
+
+    .container {
+      background-color: white;
+      padding: 2rem;
+      margin: 1rem;
       border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      max-width: 500px;
+      width: 90%;
+    }
+
+    h1 {
       text-align: center;
     }
-    #modalPotvrda button {
-      margin: 5px;
+
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.5rem;
+      margin-bottom: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    canvas {
+      display: block;
+      margin: 2rem auto;
+      width: 100%;
+      max-width: 300px;
+      height: auto;
+    }
+
+    .user-select {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
     }
   </style>
 </head>
 <body>
-  <h1>Kalkulator potrošnje goriva</h1>
-
-  <label for="korisnik">Odaberi korisnika:</label>
-  <select id="korisnik"></select>
-  <button onclick="noviKorisnik()">Novi korisnik</button>
-  <button onclick="prikaziPotvrdu()">Obriši korisnika</button>
-
-  <div id="modalPotvrda">
-    <div class="sadrzaj">
-      <p id="porukaPotvrda"></p>
-      <button onclick="potvrdiBrisanje()">Da</button>
-      <button onclick="sakrijPotvrdu()">Ne</button>
+  <div class="container">
+    <h1>Kalkulator potrošnje goriva</h1>
+    <div class="user-select">
+      <select id="userSelect"></select>
+      <button onclick="deleteUser()">Obriši</button>
     </div>
+    <label for="newUser">Novi korisnik</label>
+    <input type="text" id="newUser" placeholder="Unesite ime korisnika" />
+    <button onclick="addUser()">Dodaj korisnika</button>
+
+    <label for="kmDone">Prijeđeni kilometri (A)</label>
+    <input type="number" id="kmDone" />
+
+    <label for="kmRemaining">Preostali kilometri (B)</label>
+    <input type="number" id="kmRemaining" />
+
+    <label for="fuelLeft">Preostalo goriva (litara)</label>
+    <input type="number" id="fuelLeft" />
+
+    <button onclick="calculate()">Izračunaj</button>
+    <p id="result"></p>
+    <canvas id="historyChart"></canvas>
   </div>
 
-  <div id="unosNoviKorisnik" style="display:none">
-    <label for="imeNovog">Ime novog korisnika:</label>
-    <input type="text" id="imeNovog" />
-    <button onclick="dodajKorisnika()">Dodaj</button>
-  </div>
-
-  <label for="a">Kilometara prošao (A):</label>
-  <input type="number" id="a" />
-
-  <label for="b">Preostali kilometri (B):</label>
-  <input type="number" id="b" />
-
-  <label for="tank">Kapacitet spremnika (litara):</label>
-  <input type="number" id="tank" value="50" />
-
-  <label for="napomena">Napomena (opcionalno):</label>
-  <input type="text" id="napomena" placeholder="npr. Vožnja po autocesti" />
-
-  <button onclick="izracunaj()">Izračunaj potrošnju</button>
-  <p id="rezultat"></p>
-
-  <h2>Zadnjih 5 izračuna</h2>
-  <canvas id="grafPovijest"></canvas>
-  <ul id="povijestLista"></ul>
-
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script>
-    let povijest = {};
-    let korisnikZaBrisanje = null;
+    let currentUser = null;
+    let users = JSON.parse(localStorage.getItem('users')) || {};
 
-    const korisnikSelect = document.getElementById('korisnik');
-    const unosNoviKorisnik = document.getElementById('unosNoviKorisnik');
+    const userSelect = document.getElementById("userSelect");
+    const resultDisplay = document.getElementById("result");
+    const ctx = document.getElementById('historyChart').getContext('2d');
 
-    function ucitajKorisnike() {
-      const korisnici = JSON.parse(localStorage.getItem('korisnici')) || [];
-      korisnikSelect.innerHTML = '';
-      korisnici.forEach(k => {
-        const opt = document.createElement('option');
-        opt.value = k;
-        opt.textContent = k;
-        korisnikSelect.appendChild(opt);
+    function populateUsers() {
+      userSelect.innerHTML = "";
+      Object.keys(users).forEach(name => {
+        const option = document.createElement("option");
+        option.value = name;
+        option.textContent = name;
+        userSelect.appendChild(option);
       });
-      if (korisnici.length > 0) {
-        korisnikSelect.value = korisnici[0];
-        ucitajPovijest();
+      if (Object.keys(users).length > 0) {
+        currentUser = userSelect.value;
+        userSelect.value = currentUser;
       }
     }
 
-    function noviKorisnik() {
-      unosNoviKorisnik.style.display = 'block';
-    }
-
-    function dodajKorisnika() {
-      const ime = document.getElementById('imeNovog').value.trim();
-      if (!ime) return;
-      const korisnici = JSON.parse(localStorage.getItem('korisnici')) || [];
-      if (!korisnici.includes(ime)) {
-        korisnici.push(ime);
-        localStorage.setItem('korisnici', JSON.stringify(korisnici));
-        povijest[ime] = { ab: [], potrosnje: [], napomene: [] };
-        localStorage.setItem(`povijest_${ime}`, JSON.stringify(povijest[ime]));
-        ucitajKorisnike();
-        korisnikSelect.value = ime;
+    function addUser() {
+      const name = document.getElementById("newUser").value.trim();
+      if (name && !users[name]) {
+        users[name] = [];
+        saveUsers();
+        populateUsers();
+        userSelect.value = name;
+        currentUser = name;
       }
-      unosNoviKorisnik.style.display = 'none';
-      document.getElementById('imeNovog').value = '';
-      ucitajPovijest();
     }
 
-    function prikaziPotvrdu() {
-      korisnikZaBrisanje = korisnikSelect.value;
-      if (!korisnikZaBrisanje) return;
-      document.getElementById('porukaPotvrda').textContent = `Sigurno želiš obrisati korisnika '${korisnikZaBrisanje}' i sve njegove podatke?`;
-      document.getElementById('modalPotvrda').style.display = 'flex';
+    function deleteUser() {
+      if (currentUser && confirm(`Obrisati korisnika ${currentUser}?`)) {
+        delete users[currentUser];
+        currentUser = null;
+        saveUsers();
+        populateUsers();
+        resultDisplay.textContent = "";
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
+        chart.update();
+      }
     }
 
-    function potvrdiBrisanje() {
-      const korisnici = JSON.parse(localStorage.getItem('korisnici')) || [];
-      const noviKorisnici = korisnici.filter(k => k !== korisnikZaBrisanje);
-      localStorage.setItem('korisnici', JSON.stringify(noviKorisnici));
-      localStorage.removeItem(`povijest_${korisnikZaBrisanje}`);
-      korisnikZaBrisanje = null;
-      sakrijPotvrdu();
-      ucitajKorisnike();
+    function saveUsers() {
+      localStorage.setItem('users', JSON.stringify(users));
     }
 
-    function sakrijPotvrdu() {
-      document.getElementById('modalPotvrda').style.display = 'none';
+    function calculate() {
+      const a = parseFloat(document.getElementById("kmDone").value);
+      const b = parseFloat(document.getElementById("kmRemaining").value);
+      const fuel = parseFloat(document.getElementById("fuelLeft").value);
+      if (!currentUser || isNaN(a) || isNaN(b) || isNaN(fuel) || fuel === 0) return;
+
+      const potrosnja = ((a + b) / fuel).toFixed(2);
+      resultDisplay.textContent = `Prosječna potrošnja: ${(100 / potrosnja).toFixed(2)} l/100km`;
+
+      if (users[currentUser].length >= 5) {
+        users[currentUser].shift();
+      }
+      users[currentUser].push({ x: new Date().toLocaleTimeString(), y: (100 / potrosnja).toFixed(2) });
+      saveUsers();
+      updateChart();
     }
 
-    const ctxHistory = document.getElementById('grafPovijest').getContext('2d');
-    const historyChart = new Chart(ctxHistory, {
+    const chart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: [],
         datasets: [{
-          label: 'Zadnjih 5 potrošnji (l/100 km)',
+          label: 'Potrošnja l/100km',
           data: [],
-          borderColor: 'green',
-          backgroundColor: 'rgba(0, 128, 0, 0.1)',
-          fill: true,
-          tension: 0.2
+          fill: false,
+          borderColor: 'blue',
+          tension: 0.1
         }]
       },
       options: {
+        responsive: true,
+        maintainAspectRatio: false,
         scales: {
           y: {
-            title: {
-              display: true,
-              text: 'Potrošnja (l/100 km)'
-            }
-          },
-          x: {
-            title: {
-              display: true,
-              text: 'A + B (km)'
-            }
+            beginAtZero: true
           }
         }
       }
     });
 
-    function izracunaj() {
-      const a = parseFloat(document.getElementById('a').value);
-      const b = parseFloat(document.getElementById('b').value);
-      const tank = parseFloat(document.getElementById('tank').value);
-      const napomena = document.getElementById('napomena').value;
-      const korisnik = korisnikSelect.value;
-
-      if (!korisnik || isNaN(a) || isNaN(b) || isNaN(tank) || (a + b) === 0) {
-        document.getElementById('rezultat').textContent = 'Unesi sve vrijednosti ispravno i odaberi korisnika.';
-        return;
-      }
-
-      const ukupnoKm = a + b;
-      const potrosnja = (tank * 100 / ukupnoKm).toFixed(2);
-      document.getElementById('rezultat').textContent = `Procijenjena potrošnja: ${potrosnja} l/100 km`;
-
-      const podaci = JSON.parse(localStorage.getItem(`povijest_${korisnik}`)) || { ab: [], potrosnje: [], napomene: [] };
-      if (podaci.ab.length >= 5) {
-        podaci.ab.shift();
-        podaci.potrosnje.shift();
-        podaci.napomene.shift();
-      }
-      podaci.ab.push(ukupnoKm);
-      podaci.potrosnje.push(potrosnja);
-      podaci.napomene.push(napomena);
-      localStorage.setItem(`povijest_${korisnik}`, JSON.stringify(podaci));
-
-      ucitajPovijest();
+    function updateChart() {
+      const data = users[currentUser] || [];
+      chart.data.labels = data.map(d => d.x);
+      chart.data.datasets[0].data = data.map(d => d.y);
+      chart.update();
     }
 
-    function ucitajPovijest() {
-      const korisnik = korisnikSelect.value;
-      const podaci = JSON.parse(localStorage.getItem(`povijest_${korisnik}`)) || { ab: [], potrosnje: [], napomene: [] };
+    userSelect.addEventListener("change", () => {
+      currentUser = userSelect.value;
+      updateChart();
+      resultDisplay.textContent = "";
+    });
 
-      historyChart.data.labels = podaci.ab;
-      historyChart.data.datasets[0].data = podaci.potrosnje;
-      historyChart.update();
-
-      const lista = document.getElementById('povijestLista');
-      lista.innerHTML = '';
-      for (let i = podaci.ab.length - 1; i >= 0; i--) {
-        const li = document.createElement('li');
-        li.textContent = `A+B: ${podaci.ab[i]} km | Potrošnja: ${podaci.potrosnje[i]} l/100 km${podaci.napomene[i] ? ' | Napomena: ' + podaci.napomene[i] : ''}`;
-        lista.appendChild(li);
-      }
-    }
-
-    korisnikSelect.addEventListener('change', ucitajPovijest);
-    ucitajKorisnike();
+    populateUsers();
+    if (currentUser) updateChart();
   </script>
 </body>
 </html>
